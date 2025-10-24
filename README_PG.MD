@@ -42,12 +42,13 @@ sudo apt-get update && sudo apt-get upgrade
 sudo apt-get -y install postgresql
 
 echo "listen_addresses = '0.0.0.0'" | sudo tee -a /etc/postgresql/*/main/postgresql.conf
+echo "host    all             all             192.168.22.0/24         scram-sha-256" | sudo tee -a /etc/postgresql/*/main/pg_hba.conf
 
 # Enable PostgreSQL Service
-sudo systemctl enable postgresql
+sudo systemctl enable --now postgresql
 
 # Start PostgreSQL Service
-sudo systemctl start postgresql
+sudo systemctl restart postgresql
 ```
 
 Don’t forget to set your local unix socket connection in the pg_hba.conf file to md5 or scram-sha-256 instead of peer
@@ -89,4 +90,16 @@ GRANT ALL PRIVILEGES ON DATABASE $pdns_db TO $pdns_db_user;
 EOF
 
 sudo -u postgres psql < "pdns-createdb-pg.sql"
+```
+
+```bash
+# Temporary install PowerDNS Authoritative Server for setup schema
+sudo apt-get install pdns-server pdns-backend-pgsql -y && \
+sudo systemctl stop pdns
+
+export PGPASSWORD="$pdns_pwd"
+psql -U $pdns_db_user -h 127.0.0.1 -d $pdns_db < "/usr/share/pdns-backend-$db_type/schema/schema.$db_type.sql"
+unset PGPASSWORD
+
+sudo apt-get purge pdns-server pdns-backend-pgsql -y
 ```

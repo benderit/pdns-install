@@ -6,9 +6,8 @@ Login to superuser
 ```bash
 su
 ```
-
+## Install basic dependencies
 ```bash
-# Install basic dependencies
 apt-get update && \
 apt-get install software-properties-common gnupg2 lsb-release sudo curl -y
 usermod -aG sudo $USER
@@ -18,7 +17,7 @@ EOF
 exit
 ```
 
-### Postgresql (PGSQL) 
+## Postgresql (PGSQL) 
 ```bash
 # Add PostgreSQL Public Key
 wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor --output /etc/apt/trusted.gpg.d/postgresql.gpg

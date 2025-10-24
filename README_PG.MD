@@ -11,6 +11,7 @@ su
 
 ```bash
 # Install basic dependencies
+apt-get update && \
 apt-get install software-properties-common gnupg2 lsb-release sudo curl -y
 usermod -aG sudo $USER
 cat << EOF | tee /etc/sudoers.d/$USER

@@ -3,6 +3,39 @@ Powerdns installation guide on debial 11
 
 # PowerDNS Installation
 
+## Variables
+
+### First setup PG server and copy paste export block here
+
+```bash
+# Zone name
+export ZONE=example.com
+
+# Set your Local IP Address
+export local_address="127.0.0.1"
+
+# PDNS Auth Port with DNSDist
+export dnsdist_port=53
+
+# Recursor Port
+export recursor_port_5353
+
+# Power DNS local port
+export pdns_port=5300
+```
+
+## Inventory
+```bash
+read -p "Input 1-st DNS server IP address: " DNS_SERVER1_IP
+read -p "Input 2-nd DNS server IP address: " DNS_SERVER2_IP
+read -p "Input 3-d DNS server IP address: " DNS_SERVER3_IP
+read -p "Input PG server IP address: " PG_SERVER_IP
+export DNS_SERVER1_IP=$DNS_SERVER1_IP
+export DNS_SERVER2_IP=$DNS_SERVER2_IP
+export DNS_SERVER3_IP=$DNS_SERVER3_IP
+export PG_SERVER_IP=$PG_SERVER_IP
+```
+
 ## Setting up the Basics 
 
 First we’ll need to install some dependencies and set the PowerDNS Repositories. We’ll also create a directory to put our generated credentials and files in.
@@ -34,13 +67,6 @@ wget -qO- https://repo.powerdns.com/FD380FBB-pub.asc | sudo gpg --dearmor --outp
 # Create a Working Directory for the installation
 sudo mkdir -p /opt/pdns_install
 export workpath="/opt/pdns_install"
-```
-
-# INSERT EXPORT BLOCK FROM PG SERVER STDOUT
-# Set-up PG server IP
-```bash
-read -p "Input PG server IP address: " PG_SERVER_IP
-export PG_SERVER_IP=$PG_SERVER_IP
 ```
 
 ```bash
@@ -137,17 +163,6 @@ sudo chown root:pdns "$db_config_file"
 
 Before starting up the service you’ll need to set-up some basic parameters:
 
-```bash
-# Set your Local IP Address
-export local_address="127.0.0.1"
-
-# PDNS Auth Port with DNSDist
-export dnsdist_port=53
-export recursor_port_5353
-export pdns_port=5300
-export ZONE=example.com
-```
-
 ### Configuring PowerDNS (Recursor) 
 
 Once you’ve successfully installed the PowerDNS Recursor service you can go ahead and add Forward Zones. Usually you should add these zones if they’re yours and should be resolved by the PowerDNS Authoritative Server.
@@ -231,28 +246,28 @@ sudo apt-get install nodejs -y
 # YARN
 wget -qO- https://dl.yarnpkg.com/debian/pubkey.gpg | sudo gpg --dearmor --output /etc/apt/trusted.gpg.d/yarnpkg.gpg
 echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee "/etc/apt/sources.list.d/yarn.list"
-apt-get update -y && \
-apt-get install yarn -y
+sudo apt-get update -y && \
+sudo apt-get install yarn -y
 ```
 
 Now we can clone the PowerDNS Admin git repository and compile it.
 
 ```bash
 # Clone the Repository
-git clone https://github.com/PowerDNS-Admin/PowerDNS-Admin.git /var/www/html/pdns
+sudo git clone https://github.com/PowerDNS-Admin/PowerDNS-Admin.git /var/www/html/pdns
 
 # Go into the working directory and enable the virtual environment
 cd "/var/www/html/pdns/"
-virtualenv -p python3 flask
+sudo virtualenv -p python3 flask
 source "./flask/bin/activate"
 
 # There's a bug with PyYAML 5.4 and Cython 3.0
-sed -i "s/PyYAML==5.4/PyYAML==6.0/g" requirements.txt
+sudo sed -i "s/PyYAML==5.4/PyYAML==6.0/g" requirements.txt
 
-pip install --upgrade pip
+sudo pip install --upgrade pip
 
 # Install the requirements
-pip install -r requirements.txt
+sudo pip install -r requirements.txt
 
 # Deactivate the virtualenv
 deactivate
@@ -261,38 +276,28 @@ deactivate
 After this is done we can set up all the environment variables for the Front-end.
 
 ```bash
-prod_config="/var/www/html/pdns/configs/production.py"
-cp "/var/www/html/pdns/configs/development.py" $prod_config
+export prod_config="/var/www/html/pdns/configs/production.py"
+sudo cp "/var/www/html/pdns/configs/development.py" $prod_config
 
 # Set Filesystem_sessions
-sed -i "s/\(^FILESYSTEM_SESSIONS_ENABLED = \).*/\1True/" $prod_config
+sudo sed -i "s/\(^FILESYSTEM_SESSIONS_ENABLED = \).*/\1True/" $prod_config
 
 # Set SALT on the corresponding Parameter
-sed -i "s/\(^SALT = \).*/\1\'$pdnsadmin_salt\'/" $prod_config
+sudo sed -i "s/\(^SALT = \).*/\1\'$pdnsadmin_salt\'/" $prod_config
 # Set APIKEY on the corresponding Parameter
-sed -i "s/\(^SECRET_KEY = \).*/\1\'$pdns_apikey\'/" $prod_config
+sudo sed -i "s/\(^SECRET_KEY = \).*/\1\'$pdns_apikey\'/" $prod_config
 # Set MySQL/MariaDB/PGSQL Password on the corresponding Parameter
-sed -i "s/\(^SQLA_DB_PASSWORD = \).*/\1\'$pdns_pwd\'/" $prod_config
+sudo sed -i "s/\(^SQLA_DB_PASSWORD = \).*/\1\'$pdns_pwd\'/" $prod_config
 # Set DB Name
-sed -i "s/\(^SQLA_DB_NAME = \).*/\1\'$pdns_db\'/" $prod_config
+sudo sed -i "s/\(^SQLA_DB_NAME = \).*/\1\'$pdns_db\'/" $prod_config
 # Set DB User
-sed -i "s/\(^SQLA_DB_USER = \).*/\1\'$pdns_db_user\'/" $prod_config
+sudo sed -i "s/\(^SQLA_DB_USER = \).*/\1\'$pdns_db_user\'/" $prod_config
 
 # If you're using PostgreSQL add the following statements to the configuration file and install psycopg2
-if [[ $db_type != "mysql" ]]; then
-	source "./flask/bin/activate"
-	pip install psycopg2
-	deactivate
-fi
-
-sed -i "s/#import urllib.parse/import urllib.parse/g" $prod_config
+sudo sed -i "s/#import urllib.parse/import urllib.parse/g" $prod_config
 
 # Insert PORT after SQLA_DB_USER
-if [[ $db_type == "mysql" ]]; then
-    db_port="3306"
-else
-    db_port="5432"
-fi
+db_port="5432"
 
 if ! [[ $(grep "SQLA_DB_PORT" $prod_config) ]]; then
     sed -i "/^SQLA_DB_USER.*/a SQLA_DB_PORT = $db_port" $prod_config
@@ -301,8 +306,8 @@ else
 fi
 
 # Insert DB URI
-cat >> $prod_config <<EOF
-SQLALCHEMY_DATABASE_URI = '$db_type://{}:{}@{}/{}'.format(
+sudo cat >> $prod_config <<EOF
+SQLALCHEMY_DATABASE_URI = 'postgresql://{}:{}@{}/{}'.format(
     urllib.parse.quote_plus(SQLA_DB_USER),
     urllib.parse.quote_plus(SQLA_DB_PASSWORD),
     SQLA_DB_HOST,
@@ -311,7 +316,7 @@ SQLALCHEMY_DATABASE_URI = '$db_type://{}:{}@{}/{}'.format(
 EOF
 
 # Comment default SQLite DATABASE URI
-sed -i "s/\(^SQLALCHEMY_DATABASE_URI = 'sqlite.*\)/#\1/" $prod_config
+sudo sed -i "s/\(^SQLALCHEMY_DATABASE_URI = 'sqlite.*\)/#\1/" $prod_config
 ```
 
 ### Compiling the Front-end / Admin UI 
@@ -324,9 +329,9 @@ source "./flask/bin/activate"
 
 export FLASK_APP=powerdnsadmin/__init__.py
 export FLASK_CONF=../configs/production.py
-flask db upgrade
-yarn install --pure-lockfile
-flask assets build
+sudo flask db upgrade
+sudo yarn install --pure-lockfile
+sudo flask assets build
 deactivate
 ```
 
@@ -336,6 +341,7 @@ Copy the following files onto your NGINX Directory or create them with the follo
 
 **/etc/systemd/system/pdnsadmin.service**
 ```bash
+sudo cat >> /etc/systemd/system/pdnsadmin.service <<EOF
 [Unit]
 Description=PowerDNS-Admin
 Requires=pdnsadmin.socket
@@ -355,10 +361,12 @@ PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 /etc/systemd/system/pdnsadmin.socket
+EOF
 ```
 
 **/etc/systemd/system/pdnsadmin.socket**
 ```bash
+sudo cat >> /etc/systemd/system/pdnsadmin.socket <<EOF
 [Unit]
 Description=PowerDNS-Admin socket
 
@@ -367,16 +375,17 @@ ListenStream=/run/pdnsadmin/socket
 
 [Install]
 WantedBy=sockets.target
-/etc/nginx/sites-enabled/powerdns-admin.conf
+EOF
 ```
 
 ```bash
 # Delete the default NGINX configuration
-rm /etc/nginx/sites-enabled/default
+sudo rm /etc/nginx/sites-enabled/default
 ```
 
 **/etc/nginx/sites-enabled/powerdns-admin.conf**
-```conf
+```bash
+cat >> /etc/nginx/sites-enabled/powerdns-admin.conf << EOF
 server {
 	listen  *:80;
 	server_name               pdnsadmin.$ZONE;
@@ -419,23 +428,25 @@ server {
 		proxy_redirect        off;
 	}
 }
+EOF
 ```
+
 ```bash
-chown -R pdns:www-data "/var/www/html/pdns"
-nginx -t && systemctl restart nginx
+sudo chown -R pdns:www-data "/var/www/html/pdns"
+sudo nginx -t && systemctl restart nginx
 ```
 
 After you’ve copied and created your NGINX Entry you’ll want to enable the services so that PowerDNS-Admin starts automatically.
 
 ```bash
 echo "d /run/pdnsadmin 0755 pdns pdns -" >> "/etc/tmpfiles.d/pdnsadmin.conf"
-mkdir "/run/pdnsadmin/"
-chown -R pdns: "/run/pdnsadmin/"
-chown -R pdns: "/var/www/html/pdns/powerdnsadmin/"
+sudo mkdir "/run/pdnsadmin/"
+sudo chown -R pdns: "/run/pdnsadmin/"
+sudo chown -R pdns: "/var/www/html/pdns/powerdnsadmin/"
 
-systemctl daemon-reload
+sudo systemctl daemon-reload
 
-systemctl enable --now pdnsadmin.service pdnsadmin.socket
+sudo systemctl enable --now pdnsadmin.service pdnsadmin.socket
 ```
 
 Your database installation credentials are saved at **/opt/pdns_install/db_credentials**
@@ -443,7 +454,7 @@ Your database installation credentials are saved at **/opt/pdns_install/db_crede
 To check the PowerDNS Admin status you can do:
 
 ```
-systemctl status pdnsadmin.service pdnsadmin.socket
+sudo systemctl status pdnsadmin.service pdnsadmin.socket
 ```
 
 * Default API URL: http://localhost:8081
@@ -456,17 +467,19 @@ Now if you want you can uise DNSDist to split traffic between your local DNS and
 
 ```conf
 ---- Listen addresses
-addLocal('0.0.0.0:53')
+addLocal('0.0.0.0:$dnsdist_port')
 ---- Back-end server
-newServer({address="10.192.0.168:5353", pool="int"})
-newServer({address="1.1.1.1", pool="ext"})
-newServer({address="1.0.0.1", pool="ext"})
+newServer({address="$DNS_SERVER1_IP:$pdns_port", pool="int"})
+newServer({address="$DNS_SERVER2_IP:$pdns_port", pool="int"})
+newServer({address="$DNS_SERVER3_IP:$pdns_port", pool="int"})
+--- newServer({address="1.1.1.1", pool="ext"})
+--- newServer({address="1.0.0.1", pool="ext"})
 ---- Policy
 setServerPolicy(whashed)
 setACL({'0.0.0.0/0', '::/0'}) -- Allow all IPs access
 ---- Rules
-addAction({"internal."}, PoolAction("int"))
-addAction({"."}, PoolAction("ext"))
+addAction({"$ZONE."}, PoolAction("int"))
+--- addAction({"."}, PoolAction("ext"))
 ```
 
 If all you want to do is "forward" requests to the another DNS server, like the internet you can use this config.

@@ -7,9 +7,13 @@ Powerdns installation guide on debial 11
 
 First we’ll need to install some dependencies and set the PowerDNS Repositories. We’ll also create a directory to put our generated credentials and files in.
 
+Login to superuser
+```bash
+su
+```
+
 ```bash
 # Install basic dependencies
-su
 apt-get install software-properties-common gnupg2 lsb-release sudo curl -y
 usermod -aG sudo $USER
 cat << EOF | tee /etc/sudoers.d/$USER

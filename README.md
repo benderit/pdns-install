@@ -101,8 +101,6 @@ cd "$workpath"
 Adding the Source Repositories 
 Once the basics have been installed we can set up the PowerDNS Repositories.
 
-If you only wish to install the PDNS Authoritative server you can just use one repo, but I recommend adding all of them just in case.
-
 ```bash
 # PowerDNS Authoritative Repository
 repo_pdnsAuth="deb [arch=amd64] http://repo.powerdns.com/${osLabel} ${systemReleaseVersion}-auth-48 main"
@@ -216,9 +214,10 @@ sudo sed -i "s/# webserver=.*/webserver=yes/" "/etc/powerdns/pdns.conf"
 sudo sed -i "s/# webserver-port=.*/webserver-port=8081/" "/etc/powerdns/pdns.conf"
 sudo sed -i "s|# webserver-allow-from=.*|webserver-allow-from=$local_address,$LAN_CIDR|" "/etc/powerdns/pdns.conf"
 
-# Stop and start the service
-sudo systemctl stop pdns
+# Start the services
 sudo systemctl start pdns
+sudo systemctl start pdns-recursor
+sudo systemctl start dnsdist
 ```
 
 ## Installing the Front-end / Admin UI 
@@ -489,14 +488,11 @@ addLocal('0.0.0.0:$dnsdist_port')
 newServer({address="$DNS_SERVER1_IP:$pdns_port", pool="int"})
 newServer({address="$DNS_SERVER2_IP:$pdns_port", pool="int"})
 newServer({address="$DNS_SERVER3_IP:$pdns_port", pool="int"})
---- newServer({address="1.1.1.1", pool="ext"})
---- newServer({address="1.0.0.1", pool="ext"})
 ---- Policy
 setServerPolicy(whashed)
 setACL({'0.0.0.0/0', '::/0'}) -- Allow all IPs access
 ---- Rules
 addAction({"$ZONE."}, PoolAction("int"))
---- addAction({"."}, PoolAction("ext"))
 EOF
 ```
 

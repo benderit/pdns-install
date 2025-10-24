@@ -1,11 +1,10 @@
 # Postgresql Installation for PowerDNS
 
-## Setting up the Basics 
-
-Login to superuser
+## Login to superuser
 ```bash
 su
 ```
+
 ## Install basic dependencies
 ```bash
 apt-get update && \

@@ -27,16 +27,32 @@ wget -qO- https://repo.powerdns.com/FD380FBB-pub.asc | sudo gpg --dearmor --outp
 ```
 
 ```bash
-# Set some variables for repository setup
-export systemReleaseVersion=$(lsb_release -cs)
-export osLabel=$(lsb_release -sa 2>/dev/null|head -n 1|tr '[:upper:]' '[:lower:]')
+# Create a Working Directory for the installation
+sudo mkdir -p /opt/pdns_install
+export workpath="/opt/pdns_install"
+```
+
+# INSERT EXPORT BLOCK FROM PG SERVER STDOUT
+# Set-up PG server IP
+```bash
+read -p "Input PG server IP address: " PG_SERVER_IP
+export PG_SERVER_IP=$PG_SERVER_IP
 ```
 
 ```bash
-# Create a Working Directory for the installation
-mkdir -p /opt/pdns_install
-export workpath="/opt/pdns_install"
+echo "pdns_db=$pdns_db" | sudo tee "$workpath/db_credentials"
+echo "pdns_db_user=$pdns_db_user" | sudo tee -a "$workpath/db_credentials"
+echo "pdns_pwd=$pdns_pwd" | sudo tee -a "$workpath/db_credentials"
+echo "pdnsadmin_salt=$pdnsadmin_salt" | sudo tee -a "$workpath/db_credentials"
+echo "pdns_apikey=$pdns_apikey" | sudo tee -a "$workpath/db_credentials"
+echo "workpath=$workpath" | sudo tee -a "$workpath/db_credentials"
+echo "systemReleaseVersion=$systemReleaseVersion" | sudo tee -a "$workpath/db_credentials"
+echo "osLabel=$osLabel" | sudo tee -a "$workpath/db_credentials"
+sudo chown root:root "$workpath/db_credentials"
+sudo chmod 640 "$workpath/db_credentials"
+cd "$workpath"
 ```
+
 Adding the Source Repositories 
 Once the basics have been installed we can set up the PowerDNS Repositories.
 
@@ -64,123 +80,27 @@ Pin-Priority: 600
 EOF
 ```
 
-## Installing the PowerDNS Backend 
-
-Before installing PowerDNS you’ll need to choose a suitable backend (Postgres or MariaDB). I recommend Postgres but MariaDB is also a good choice.
-
-### Postgresql (PGSQL) 
-
-```bash
-export systemReleaseVersion=$(lsb_release -cs)
-```
-
-```bash
-# Add PostgreSQL Public Key
-wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor --output /etc/apt/trusted.gpg.d/postgresql.gpg
-
-# Add PostgreSQL Repository
-echo "deb http://apt.postgresql.org/pub/repos/apt ${systemReleaseVersion}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-
-# Update the package lists:
-sudo apt-get update && sudo apt-get upgrade
-
-# Install the latest version of PostgreSQL.
-# If you want a specific version, use 'postgresql-12' or similar instead of 'postgresql':
-sudo apt-get -y install postgresql
-
-echo "listen_addresses = '0.0.0.0'" | sudo tee -a /etc/postgresql/*/main/postgresql.conf
-
-# Enable PostgreSQL Service
-sudo systemctl enable postgresql
-
-# Start PostgreSQL Service
-sudo systemctl start postgresql
-```
-
-Don’t forget to set your local unix socket connection in the pg_hba.conf file to md5 or scram-sha-256 instead of peer
-
-
-## Generating the Database 
-
-Once the DBMS is installed you’ll need to generate credentials for PowerDNS and create it’s DB Schema.
-
-```bash
-pdns_db="pdns"
-pdns_db_user="pdnsadmin"
-pdns_pwd="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13 ; echo '')"
-pdnsadmin_salt="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 32 ; echo '')"
-pdns_apikey="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 32 ; echo '')"
-
-echo "pdns_db=$pdns_db" > "$workpath/db_credentials"
-echo "pdns_db_user=$pdns_db_user" >> "$workpath/db_credentials"
-echo "pdns_pwd=$pdns_pwd" >> "$workpath/db_credentials"
-echo "pdnsadmin_salt=$pdnsadmin_salt" >> "$workpath/db_credentials"
-echo "pdns_apikey=$pdns_apikey" >> "$workpath/db_credentials"
-echo "workpath=$workpath" >> "$workpath/db_credentials"
-echo 'systemReleaseVersion=$(lsb_release -cs)' >> "$workpath/db_credentials"
-echo 'osLabel=$(lsb_release -sa 2>/dev/null|head -n 1|tr '[:upper:]' '[:lower:]')' >> "$workpath/db_credentials"
-chown root:root "$workpath/db_credentials"
-chmod 640 "$workpath/db_credentials"
-cd "$workpath"
-```
-
-Once we’ve generated the credentials we can move on to create the database.
-
----
-
-### MariaDB / MySQL 
-
-```bash
-# MySQL/MariaDB - Set this variable for stuff down the road
-db_type="mysql"
-echo "db_type=$db_type" >> "$workpath/db_credentials"
-
-echo \
-"-- PowerDNS MySQL/MariaDB Create DB File
-CREATE DATABASE pdns;
-GRANT ALL ON pdns.* TO pdnsadmin@localhost IDENTIFIED BY '$pdns_pwd';
-FLUSH PRIVILEGES;" > "$workpath/pdns-createdb-my.sql"
-mariadb -u root < "$workpath/pdns-createdb-my.sql"
-```
-
-### Postgresql (PGSQL)
-
-```bash
-# PostgreSQL - Set this variable for stuff down the road
-db_type="pgsql"
-echo "db_type=$db_type" >> "$workpath/db_credentials"
-
-echo \
-"-- PowerDNS PGSQL Create DB File
-CREATE USER $pdns_db_user WITH ENCRYPTED PASSWORD '$pdns_pwd';
-CREATE DATABASE $pdns_db OWNER $pdns_db_user;
-GRANT ALL PRIVILEGES ON DATABASE $pdns_db TO $pdns_db_user;" > "$workpath/pdns-createdb-pg.sql"
-sudo -u postgres psql < "$workpath/pdns-createdb-pg.sql"
-```
-
 ### Installing PowerDNS/DNSDist 
 
 ```bash
 # Update the package lists:
-apt update
-
-# For MariaDB
-apt-get install pdns-backend-mysql -y
-# For PostgreSQL
-apt-get install pdns-backend-pgsql -y
+sudo apt-get update
 
 # PowerDNS Authoritative Server
-apt-get install pdns-server -y
+sudo apt-get install pdns-server pdns-backend-pgsql -y && \
+sudo systemctl stop pdns
 
 # PowerDNS Recursor Server
-apt install pdns-recursor
+sudo apt-get install pdns-recursor -y && \
+sudo systemctl stop pdns-recursor
 
 # DNS Dist Balancer
-apt install dnsdist
+sudo apt-get install dnsdist -y && \
+sudo systemctl stop dnsdist
 
 # Disable systemd-resolved
-systemctl disable systemd-resolved
-systemctl stop systemd-resolved
+sudo systemctl disable systemd-resolved
+sudo systemctl stop systemd-resolved
 ```
 
 You’ll want to set up an external DNS for resolution in the resolv.conf file if you do not set up a Recursor DNS.
@@ -190,35 +110,23 @@ You’ll want to set up an external DNS for resolution in the resolv.conf file i
 Once the PowerDNS Server has been installed you’ll need to populate it’s database with the provided Schema from it’s backend.
 
 ```bash
-db_config_path="/etc/powerdns/pdns.d"
+export db_config_path="/etc/powerdns/pdns.d"
 
 # Define config file based on selected DB type
-db_config_file="$db_config_path/g$db_type.conf"
-
-if [[ $db_type == "mysql" ]]; then
-	mariadb -u pdnsadmin -p $pdns_db < "/usr/share/pdns-backend-$db_type/schema/schema.$db_type.sql"
-else
-	current_pgsql_ver=$(psql -V|awk -F " " '{print $NF}'|awk -F "." '{print $1}')
-	export PGPASSWORD="$pdns_pwd"
-	psql -U $pdns_db_user -h 127.0.0.1 -d $pdns_db < "/usr/share/pdns-backend-$db_type/schema/schema.$db_type.sql"
-	unset PGPASSWORD
-fi
+export db_config_file="$db_config_path/g$db_type.conf"
 
 # Copy the example config file
-cp /usr/share/doc/pdns-backend-$db_type/examples/g$db_type.conf /etc/powerdns/pdns.d/
+sudo cp /usr/share/doc/pdns-backend-$db_type/examples/g$db_type.conf /etc/powerdns/pdns.d/
 
 # Change the values in your PowerDNS Config file to match your saved credentials
-sed -i "s/\(^g$db_type-dbname=\).*/\1$pdns_db/" "$db_config_file"
-sed -i "s/\(^g$db_type-host=\).*/\1127.0.0.1/" "$db_config_file"
-if [[ $db_type == "mysql" ]]; then
-	sed -i "s/\(^g$db_type-port=\).*/\13306/" "$db_config_file"
-else
-	sed -i "s/\(^g$db_type-port=\).*/\15432/" "$db_config_file"
-fi
-sed -i "s/\(^g$db_type-user=\).*/\1$pdns_db_user/" "$db_config_file"
-sed -i "s/\(^g$db_type-password=\).*/\1$pdns_pwd/" "$db_config_file"
-chmod 640 "$db_config_file"
-chown root:pdns "$db_config_file"
+sudo sed -i "s/gpgsql-dnssec=yes/gpgsql-dnssec=no/" "$db_config_file"
+sudo sed -i "s/\(^g$db_type-dbname=\).*/\1$pdns_db/" "$db_config_file"
+sudo sed -i "s/\(^g$db_type-host=\).*/\1$PG_SERVER_IP/" "$db_config_file"
+sudo sed -i "s/\(^g$db_type-port=\).*/\15432/" "$db_config_file"
+sudo sed -i "s/\(^g$db_type-user=\).*/\1$pdns_db_user/" "$db_config_file"
+sudo sed -i "s/\(^g$db_type-password=\).*/\1$pdns_pwd/" "$db_config_file"
+sudo chmod 640 "$db_config_file"
+sudo chown root:pdns "$db_config_file"
 ```
 
 ### Configuring PowerDNS (Authoritative) 
@@ -227,13 +135,13 @@ Before starting up the service you’ll need to set-up some basic parameters:
 
 ```bash
 # Set your Local IP Address
-local-address=127.0.0.1, $EXTERNAL_SERVER_IP
-
-# If you only use the PowerDNS Authoritative Server
-local-port=53
+export local_address="127.0.0.1"
 
 # PDNS Auth Port with DNSDist
-local-port=5300
+export dnsdist_port=53
+export recursor_port_5353
+export pdns_port=5300
+export ZONE=example.com
 ```
 
 ### Configuring PowerDNS (Recursor) 
@@ -245,10 +153,12 @@ To do that edit the file `/etc/powerdns/recursor.conf`.
 You can add zones in the following format:
 
 ```bash
+cat << EOF | sudo tee /etc/powerdns/recursor.conf 
 # First Forward Zone
-forward-zones=example.com=127.0.0.1:5300
+forward-zones=$ZONE=$local_address:$pdns_port
 # N Forward Zone
-forward-zones+=example.com=127.0.0.1:5300
+forward-zones+=$ZONE=$local_address:$pdns_port
+EOF
 ```
 
 This basically redirects your Recursor requests to the Authoritative Server. It’s recommended to only allow Recursive Queries to your LAN and only expose your Authoritative DNS to external queries.
@@ -259,20 +169,22 @@ Next up you’ll need to set up your API Key for the Flask Front-end to be able 
 
 ```bash 
 # Set the API Key to your generated key and API Parameter to "Yes"
-sed -i "s/.*api=\(yes\|no\)+$/api=yes/" "/etc/powerdns/pdns.conf"
-sed -i "s/\(.*api-key=\).*/\1$pdns_apikey/" "/etc/powerdns/pdns.conf"
-sed -i "s/.*webserver=\(yes\|no\)+$/webserver=yes/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# api=.*/api=yes/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# api-key=.*/api-key=$pdns_apikey/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# webserver=.*/webserver=yes/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# local-address=.*/local-address=$local_address/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# local-port=.*/local-port=$pdns_port/" "/etc/powerdns/pdns.conf"
 
 # Stop and start the service
-systemctl stop pdns
-systemctl start pdns
+sudo systemctl stop pdns
+sudo systemctl start pdns
 ```
 
 And add the API Webserver Port and Allowed CIDR.
 
 ```bash
 # Webserver/API access is only allowed from these subnets
-webserver-allow-from=127.0.0.1,$LAN_CIDR
+webserver-allow-from=$local_address,$LAN_CIDR
 
 # Webserver/API Port to listen on
 webserver-port=8081
@@ -465,7 +377,7 @@ rm /etc/nginx/sites-enabled/default
 ```conf
 server {
 	listen  *:80;
-	server_name               pdnsadmin.example.com;
+	server_name               pdnsadmin.$ZONE;
 
 	index                     index.html index.htm index.php;
 	root                      /var/www/html/pdns;

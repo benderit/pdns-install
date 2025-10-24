@@ -26,6 +26,14 @@ export pdns_port=5300
 
 ## Inventory
 ```bash
+export DNS_SERVER1_IP=192.168.22.49
+export DNS_SERVER2_IP=192.168.22.56
+export DNS_SERVER3_IP=192.168.22.55
+export PG_SERVER_IP=192.168.22.57
+```
+
+## Inventory
+```bash
 read -p "Input 1-st DNS server IP address: " DNS_SERVER1_IP
 read -p "Input 2-nd DNS server IP address: " DNS_SERVER2_IP
 read -p "Input 3-d DNS server IP address: " DNS_SERVER3_IP

@@ -172,26 +172,23 @@ This basically redirects your Recursor requests to the Authoritative Server. Itâ
 Next up youâ€™ll need to set up your API Key for the Flask Front-end to be able to communicate with your PDNS Back-end.
 
 ```bash 
+export LAN_CIDR=192.168.22.0/24
+
 # Set the API Key to your generated key and API Parameter to "Yes"
 sudo sed -i "s/# api=.*/api=yes/" "/etc/powerdns/pdns.conf"
 sudo sed -i "s/# api-key=.*/api-key=$pdns_apikey/" "/etc/powerdns/pdns.conf"
-sudo sed -i "s/# webserver=.*/webserver=yes/" "/etc/powerdns/pdns.conf"
+
 sudo sed -i "s/# local-address=.*/local-address=$local_address/" "/etc/powerdns/pdns.conf"
 sudo sed -i "s/# local-port=.*/local-port=$pdns_port/" "/etc/powerdns/pdns.conf"
+
+# Webserver/API access is only allowed from these subnets
+sudo sed -i "s/# webserver=.*/webserver=yes/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# webserver-port=.*/webserver-port=8081/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# webserver-allow-from=.*/webserver-allow-from=$local_address,$LAN_CIDR/" "/etc/powerdns/pdns.conf"
 
 # Stop and start the service
 sudo systemctl stop pdns
 sudo systemctl start pdns
-```
-
-And add the API Webserver Port and Allowed CIDR.
-
-```bash
-# Webserver/API access is only allowed from these subnets
-webserver-allow-from=$local_address,$LAN_CIDR
-
-# Webserver/API Port to listen on
-webserver-port=8081
 ```
 
 ## Installing the Front-end / Admin UI 

@@ -80,7 +80,6 @@ echo "export workpath=$workpath" >> "db_credentials"
 echo 'export systemReleaseVersion=$(lsb_release -cs)' >> "db_credentials"
 echo 'export osLabel=$(lsb_release -sa 2>/dev/null|head -n 1|tr '[:upper:]' '[:lower:]')' >> "db_credentials"
 echo "export db_type=$db_type" >> "db_credentials"
-cat db_credentials
 ```
 
 ```bash
@@ -104,4 +103,9 @@ psql -U $pdns_db_user -h 127.0.0.1 -d $pdns_db < "/usr/share/pdns-backend-$db_ty
 unset PGPASSWORD
 
 sudo apt-get purge pdns-server pdns-backend-pgsql -y
+```
+
+# COPY EXPORT BLOCK TO PowerDNS servers before install it
+```bash
+cat "db_credentials"
 ```

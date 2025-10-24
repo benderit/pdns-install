@@ -79,14 +79,20 @@ export workpath="/opt/pdns_install"
 ```
 
 ```bash
+# Set some variables for repository setup
+systemReleaseVersion=$(lsb_release -cs)
+osLabel=$(lsb_release -sa 2>/dev/null|head -n 1|tr '[:upper:]' '[:lower:]')
+```
+
+```bash
 echo "pdns_db=$pdns_db" | sudo tee "$workpath/db_credentials"
 echo "pdns_db_user=$pdns_db_user" | sudo tee -a "$workpath/db_credentials"
 echo "pdns_pwd=$pdns_pwd" | sudo tee -a "$workpath/db_credentials"
 echo "pdnsadmin_salt=$pdnsadmin_salt" | sudo tee -a "$workpath/db_credentials"
 echo "pdns_apikey=$pdns_apikey" | sudo tee -a "$workpath/db_credentials"
 echo "workpath=$workpath" | sudo tee -a "$workpath/db_credentials"
-echo "systemReleaseVersion=$systemReleaseVersion" | sudo tee -a "$workpath/db_credentials"
-echo "osLabel=$osLabel" | sudo tee -a "$workpath/db_credentials"
+#echo "systemReleaseVersion=$systemReleaseVersion" | sudo tee -a "$workpath/db_credentials"
+#echo "osLabel=$osLabel" | sudo tee -a "$workpath/db_credentials"
 sudo chown root:root "$workpath/db_credentials"
 sudo chmod 640 "$workpath/db_credentials"
 cd "$workpath"

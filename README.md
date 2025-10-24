@@ -214,7 +214,7 @@ sudo sed -i "s/# local-port=.*/local-port=$pdns_port/" "/etc/powerdns/pdns.conf"
 # Webserver/API access is only allowed from these subnets
 sudo sed -i "s/# webserver=.*/webserver=yes/" "/etc/powerdns/pdns.conf"
 sudo sed -i "s/# webserver-port=.*/webserver-port=8081/" "/etc/powerdns/pdns.conf"
-sudo sed -i "s/# webserver-allow-from=.*/webserver-allow-from=$local_address,$LAN_CIDR/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s|# webserver-allow-from=.*|webserver-allow-from=$local_address,$LAN_CIDR|" "/etc/powerdns/pdns.conf"
 
 # Stop and start the service
 sudo systemctl stop pdns

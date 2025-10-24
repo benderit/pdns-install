@@ -199,7 +199,8 @@ Once the backend is installed, we’ll install the admin front-end.
 
 ```bash
 # Install PowerDNS Admin Dependencies
-apt-get install nginx \
+sudo apt-get install -yqqq \
+nginx \
 python3-dev \
 python3-venv \
 libsasl2-dev \
@@ -216,21 +217,21 @@ build-essential \
 libmariadb-dev \
 git \
 libpq-dev \
-python3-flask -y
+python3-flask
 ```
 
 After installing the required dependencies you’ll also need to install NodeJS and YARN
 
 ```bash
 # NodeJS
-curl -sL https://deb.nodesource.com/setup_20.x | bash -
-apt-get update -y
-apt-get install nodejs -y
+curl -sL https://deb.nodesource.com/setup_20.x | sudo bash -
+sudo apt-get update -y && \
+sudo apt-get install nodejs -y
 
 # YARN
-wget -O- https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor > /etc/apt/trusted.gpg.d/yarnpkg.gpg
-echo "deb https://dl.yarnpkg.com/debian/ stable main" > "/etc/apt/sources.list.d/yarn.list"
-apt-get update -y
+wget -qO- https://dl.yarnpkg.com/debian/pubkey.gpg | sudo gpg --dearmor --output /etc/apt/trusted.gpg.d/yarnpkg.gpg
+echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee "/etc/apt/sources.list.d/yarn.list"
+apt-get update -y && \
 apt-get install yarn -y
 ```
 

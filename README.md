@@ -303,6 +303,8 @@ sudo sed -i "s/\(^SALT = \).*/\1\'$pdnsadmin_salt\'/" $prod_config
 sudo sed -i "s/\(^SECRET_KEY = \).*/\1\'$pdns_apikey\'/" $prod_config
 # Set MySQL/MariaDB/PGSQL Password on the corresponding Parameter
 sudo sed -i "s/\(^SQLA_DB_PASSWORD = \).*/\1\'$pdns_pwd\'/" $prod_config
+# Set PG HOST
+sudo sed -i "s/\(^SQLA_DB_HOST = \).*/\1\'$PG_SERVER_IP\'/" $prod_config
 # Set DB Name
 sudo sed -i "s/\(^SQLA_DB_NAME = \).*/\1\'$pdns_db\'/" $prod_config
 # Set DB User
@@ -315,13 +317,13 @@ sudo sed -i "s/#import urllib.parse/import urllib.parse/g" $prod_config
 db_port="5432"
 
 if ! [[ $(grep "SQLA_DB_PORT" $prod_config) ]]; then
-    sed -i "/^SQLA_DB_USER.*/a SQLA_DB_PORT = $db_port" $prod_config
+    sudo sed -i "/^SQLA_DB_USER.*/a SQLA_DB_PORT = $db_port" $prod_config
 else
-    sed -i "s/\(^SQLA_DB_PORT = \).*/\1$db_port/" $prod_config
+    sudo sed -i "s/\(^SQLA_DB_PORT = \).*/\1$db_port/" $prod_config
 fi
 
 # Insert DB URI
-sudo cat >> $prod_config <<EOF
+sudo cat << EOF | sudo tee -a $prod_config
 SQLALCHEMY_DATABASE_URI = 'postgresql://{}:{}@{}/{}'.format(
     urllib.parse.quote_plus(SQLA_DB_USER),
     urllib.parse.quote_plus(SQLA_DB_PASSWORD),
@@ -344,7 +346,7 @@ source "./flask/bin/activate"
 
 export FLASK_APP=powerdnsadmin/__init__.py
 export FLASK_CONF=../configs/production.py
-sudo flask db upgrade
+flask db upgrade
 sudo yarn install --pure-lockfile
 sudo flask assets build
 deactivate
@@ -356,7 +358,7 @@ Copy the following files onto your NGINX Directory or create them with the follo
 
 **/etc/systemd/system/pdnsadmin.service**
 ```bash
-sudo cat >> /etc/systemd/system/pdnsadmin.service <<EOF
+cat << EOF | sudo tee /etc/systemd/system/pdnsadmin.service
 [Unit]
 Description=PowerDNS-Admin
 Requires=pdnsadmin.socket
@@ -368,20 +370,19 @@ User=pdns
 Group=pdns
 Environment="FLASK_CONF=../configs/production.py"
 WorkingDirectory=/var/www/html/pdns
-ExecStart=/var/www/html/pdns/flask/bin/gunicorn --pid /run/pdnsadmin/pid --bind unix:/run/pdnsadmin/socket 'powerdnsadmin:create_app()'
-ExecReload=/bin/kill -s HUP $MAINPID
-ExecStop=/bin/kill -s TERM $MAINPID
+ExecStart=/usr/local/bin/gunicorn --pid /run/pdnsadmin/pid --bind unix:/run/pdnsadmin/socket 'powerdnsadmin:create_app()'
+ExecReload=/bin/kill -s HUP \$MAINPID
+ExecStop=/bin/kill -s TERM \$MAINPID
 PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
-/etc/systemd/system/pdnsadmin.socket
 EOF
 ```
 
 **/etc/systemd/system/pdnsadmin.socket**
 ```bash
-sudo cat >> /etc/systemd/system/pdnsadmin.socket <<EOF
+cat << EOF | sudo tee /etc/systemd/system/pdnsadmin.socket
 [Unit]
 Description=PowerDNS-Admin socket
 
@@ -400,7 +401,7 @@ sudo rm /etc/nginx/sites-enabled/default
 
 **/etc/nginx/sites-enabled/powerdns-admin.conf**
 ```bash
-cat >> /etc/nginx/sites-enabled/powerdns-admin.conf << EOF
+cat << EOF | sudo tee /etc/nginx/sites-enabled/powerdns-admin.conf 
 server {
 	listen  *:80;
 	server_name               pdnsadmin.$ZONE;
@@ -418,20 +419,20 @@ server {
 	proxy_read_timeout                90;
 	proxy_buffers                     32 4k;
 	proxy_buffer_size                 8k;
-	proxy_set_header                  Host $host;
-	proxy_set_header                  X-Real-IP $remote_addr;
-	proxy_set_header                  X-Forwarded-For $proxy_add_x_forwarded_for;
+	proxy_set_header                  Host \$host;
+	proxy_set_header                  X-Real-IP \$remote_addr;
+	proxy_set_header                  X-Forwarded-For \$proxy_add_x_forwarded_for;
 	proxy_headers_hash_bucket_size    64;
 
 	location ~ ^/static/  {
 		include  /etc/nginx/mime.types;
 		root /var/www/html/pdns/powerdnsadmin;
 
-		location ~*  \.(jpg|jpeg|png|gif)$ {
+		location ~*  \.(jpg|jpeg|png|gif)\$ {
 		expires 365d;
 		}
 
-		location ~* ^.+.(css|js)$ {
+		location ~* ^.+.(css|js)\$ {
 		expires 7d;
 		}
 	}
@@ -448,13 +449,13 @@ EOF
 
 ```bash
 sudo chown -R pdns:www-data "/var/www/html/pdns"
-sudo nginx -t && systemctl restart nginx
+sudo nginx -t && sudo systemctl restart nginx
 ```
 
 After you’ve copied and created your NGINX Entry you’ll want to enable the services so that PowerDNS-Admin starts automatically.
 
 ```bash
-echo "d /run/pdnsadmin 0755 pdns pdns -" >> "/etc/tmpfiles.d/pdnsadmin.conf"
+echo "d /run/pdnsadmin 0755 pdns pdns -" | sudo tee -a "/etc/tmpfiles.d/pdnsadmin.conf"
 sudo mkdir "/run/pdnsadmin/"
 sudo chown -R pdns: "/run/pdnsadmin/"
 sudo chown -R pdns: "/var/www/html/pdns/powerdnsadmin/"
@@ -481,6 +482,7 @@ Now if you want you can uise DNSDist to split traffic between your local DNS and
 **/etc/dnsdist/dnsdist.conf**
 
 ```conf
+cat << EOF | sudo tee /etc/dnsdist/dnsdist.conf
 ---- Listen addresses
 addLocal('0.0.0.0:$dnsdist_port')
 ---- Back-end server
@@ -495,35 +497,8 @@ setACL({'0.0.0.0/0', '::/0'}) -- Allow all IPs access
 ---- Rules
 addAction({"$ZONE."}, PoolAction("int"))
 --- addAction({"."}, PoolAction("ext"))
-```
-
-If all you want to do is "forward" requests to the another DNS server, like the internet you can use this config.
-
-```conf
-setLocal("0.0.0.0:53")
-setACL({'0.0.0.0/0', '::/0'}) -- Allow all IPs access
-
-newServer("10.192.0.168:5353")
-newServer("1.1.1.1")
-newServer("1.0.0.1")
+EOF
 ```
 
 This will essentially filter out your LAN Hosts from External Queries
 You’ll need to change your Auth and Recursor Server ports to match this configuration file (Auth → 5300 / Rec → 5301)
-
-
-### Unsetting all variables 
-
-Finally once the setup phase is done, you’ll want to clear the variables.
-
-```
-unset systemReleaseVersion
-unset osLabel
-unset repo_pdnsAuth
-unset repo_pdnsRec
-unset repo_dnsdist
-unset pdns_pwd
-unset pdnsadmin_salt
-unset pdns_apikey
-unset workpath
-```

@@ -2,8 +2,6 @@
 
 ## Setting up the Basics 
 
-First we’ll need to install some dependencies and set the PowerDNS Repositories. We’ll also create a directory to put our generated credentials and files in.
-
 Login to superuser
 ```bash
 su
@@ -20,21 +18,13 @@ EOF
 exit
 ```
 
-
 ### Postgresql (PGSQL) 
-
-```bash
-# Set some variables for repository setup
-export systemReleaseVersion=$(lsb_release -cs)
-export osLabel=$(lsb_release -sa 2>/dev/null|head -n 1|tr '[:upper:]' '[:lower:]')
-```
-
 ```bash
 # Add PostgreSQL Public Key
 wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor --output /etc/apt/trusted.gpg.d/postgresql.gpg
 
 # Add PostgreSQL Repository
-echo "deb http://apt.postgresql.org/pub/repos/apt ${systemReleaseVersion}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
 
 # Update the package lists:
 sudo apt-get update && sudo apt-get upgrade
@@ -62,8 +52,6 @@ Once the DBMS is installed you’ll need to generate credentials for PowerDNS an
 
 ```bash
 export workpath="/opt/pdns_install"
-export systemReleaseVersion=$(lsb_release -cs)
-export osLabel=$(lsb_release -sa 2>/dev/null|head -n 1|tr '[:upper:]' '[:lower:]')
 export pdns_db="pdns"
 export pdns_db_user="pdnsadmin"
 export pdns_pwd="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13 ; echo '')"
@@ -77,8 +65,6 @@ echo "export pdns_pwd=$pdns_pwd" >> "db_credentials"
 echo "export pdnsadmin_salt=$pdnsadmin_salt" >> "db_credentials"
 echo "export pdns_apikey=$pdns_apikey" >> "db_credentials"
 echo "export workpath=$workpath" >> "db_credentials"
-echo 'export systemReleaseVersion=$(lsb_release -cs)' >> "db_credentials"
-echo 'export osLabel=$(lsb_release -sa 2>/dev/null|head -n 1|tr '[:upper:]' '[:lower:]')' >> "db_credentials"
 echo "export db_type=$db_type" >> "db_credentials"
 ```
 

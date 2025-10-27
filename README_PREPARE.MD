@@ -34,6 +34,13 @@ wget -qO- https://repo.powerdns.com/FD380FBB-pub.asc | sudo gpg --dearmor --outp
 # Stable Branch
 wget -qO- https://repo.powerdns.com/FD380FBB-pub.asc | sudo gpg --dearmor --output /etc/apt/trusted.gpg.d/pdns_stable.gpg
 
+# Add PostgreSQL Public Key
+wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor --output /etc/apt/trusted.gpg.d/postgresql.gpg
+
+# PostgreSQL Repository
+repo_pgdg="deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main"
+echo $repo_pgdg | sudo tee /etc/apt/sources.list.d/pgdg.list
+
 # PowerDNS Authoritative Repository
 repo_pdnsAuth="deb [arch=amd64] http://repo.powerdns.com/${osLabel} ${systemReleaseVersion}-auth-48 main"
 echo $repo_pdnsAuth | sudo tee "/etc/apt/sources.list.d/pdns-auth.list"

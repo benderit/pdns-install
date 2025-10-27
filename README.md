@@ -134,7 +134,7 @@ sudo sed -i "s/# api=.*/api=yes/" "/etc/powerdns/pdns.conf"
 sudo sed -i "s/# api-key=.*/api-key=$pdns_apikey/" "/etc/powerdns/pdns.conf"
 
 sudo sed -i "s/# local-address=.*/local-address=$PDNS_ADDRESS/" "/etc/powerdns/pdns.conf"
-sudo sed -i "s/# local-port=.*/local-port=$pdns_port/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# local-port=.*/local-port=$PDNS_PORT/" "/etc/powerdns/pdns.conf"
 
 # Webserver/API access is only allowed from these subnets
 sudo sed -i "s/# webserver=.*/webserver=yes/" "/etc/powerdns/pdns.conf"

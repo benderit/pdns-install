@@ -14,7 +14,7 @@ apt-get install software-properties-common gnupg2 lsb-release sudo curl -y
 
 ### Set-up sudo for user
 ```bash
-usermod -aG sudo $USER
+/usr/sbin/usermod -aG sudo $USER
 cat << EOF | tee /etc/sudoers.d/$USER
 $USER ALL=(ALL:ALL) NOPASSWD: ALL
 EOF

@@ -177,7 +177,7 @@ newServer({address="$DNS_SERVER2_IP:$RECURSOR_PORT", pool="int"})
 newServer({address="$DNS_SERVER3_IP:$RECURSOR_PORT", pool="int"})
 ---- Policy
 setServerPolicy(whashed)
-setACL({'$DNSDIST_ALLOW_FROM')
+setACL({'$DNSDIST_ALLOW_FROM'})
 ---- Rules
 addAction({"$ZONE."}, PoolAction("int"))
 EOF

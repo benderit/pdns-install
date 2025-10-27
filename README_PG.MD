@@ -55,18 +55,6 @@ EOF
 sudo -u postgres psql < "pdns-createdb-pg.sql"
 ```
 
-```bash
-# Temporary install PowerDNS Authoritative Server for setup schema
-sudo apt-get install pdns-server pdns-backend-pgsql -y && \
-sudo systemctl stop pdns
-
-export PGPASSWORD="$pdns_pwd"
-psql -U $pdns_db_user -h 127.0.0.1 -d $pdns_db < "/usr/share/pdns-backend-$db_type/schema/schema.$db_type.sql"
-unset PGPASSWORD
-
-sudo apt-get purge pdns-server pdns-backend-pgsql -y
-```
-
 # COPY EXPORT BLOCK TO PowerDNS servers before install it
 ```bash
 cat "db_credentials"

@@ -314,7 +314,7 @@ export FLASK_APP=powerdnsadmin/__init__.py
 export FLASK_CONF=../configs/production.py
 flask db upgrade
 sudo yarn install --pure-lockfile
-sudo flask assets build
+sudo -E flask assets build
 deactivate
 ```
 

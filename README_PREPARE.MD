@@ -18,6 +18,7 @@ apt-get install software-properties-common gnupg2 lsb-release sudo curl -y
 cat << EOF | tee /etc/sudoers.d/$USER
 $USER ALL=(ALL:ALL) NOPASSWD: ALL
 EOF
+exit
 ```
 
 ### Adding the Source Repositories 

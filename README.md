@@ -1,29 +1,7 @@
 # PowerDNS Installation
 
 ## Before begun - setup PG server and copy paste export block here
-#README_PG.MD
-
-## Variables
-
-```bash
-# Zone name
-export ZONE=example.com
-
-# Set your Local IP Address
-export local_address="127.0.0.1"
-
-# PDNS Auth Port with DNSDist
-export dnsdist_port=53
-
-# Recursor Port
-export recursor_port=5353
-
-# Power DNS local port
-export pdns_port=5300
-
-# PG port
-PG_SERVER_PORT="5432"
-```
+more in README_PG.MD
 
 ## Inventory
 ```bash
@@ -42,6 +20,35 @@ export DNS_SERVER1_IP=$DNS_SERVER1_IP
 export DNS_SERVER2_IP=$DNS_SERVER2_IP
 export DNS_SERVER3_IP=$DNS_SERVER3_IP
 export PG_SERVER_IP=$PG_SERVER_IP
+```
+
+## Variables
+
+```bash
+# Zone name
+export ZONE=example.com
+
+# DNSDist
+export DNSDIST_PORT=53
+export DNSDIST_ADDRESS=0.0.0.0
+export DNSDIST_ALLOW_FROM=0.0.0.0/0
+
+# Recursor
+export RECURSOR_PORT=5300
+export RECURSOR_ADDRRESS=0.0.0.0
+export RECURSOR_ALLOW_FROM=127.0.0.0/8,$DNS_SERVER1_IP,$DNS_SERVER2_IP,$DNS_SERVER3_IP
+
+# PDNS
+export PDNS_ADDRESS=127.0.0.1
+export PDNS_PORT=5301
+
+# PDNS WebServer
+export PDNS_WS_ADDRESS=0.0.0.0
+export PDNS_WS_PORT=8081
+export PDNS_WS_ALLOW_FROM=127.0.0.0/8,$DNS_SERVER1_IP,$DNS_SERVER2_IP,$DNS_SERVER3_IP
+
+# PG port
+export PG_SERVER_PORT="5432"
 ```
 
 ### Prepare environment
@@ -126,13 +133,14 @@ sudo chown root:pdns "$db_config_file"
 sudo sed -i "s/# api=.*/api=yes/" "/etc/powerdns/pdns.conf"
 sudo sed -i "s/# api-key=.*/api-key=$pdns_apikey/" "/etc/powerdns/pdns.conf"
 
-sudo sed -i "s/# local-address=.*/local-address=$local_address/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# local-address=.*/local-address=$PDNS_ADDRESS/" "/etc/powerdns/pdns.conf"
 sudo sed -i "s/# local-port=.*/local-port=$pdns_port/" "/etc/powerdns/pdns.conf"
 
 # Webserver/API access is only allowed from these subnets
 sudo sed -i "s/# webserver=.*/webserver=yes/" "/etc/powerdns/pdns.conf"
-sudo sed -i "s/# webserver-port=.*/webserver-port=8081/" "/etc/powerdns/pdns.conf"
-sudo sed -i "s|# webserver-allow-from=.*|webserver-allow-from=$local_address,$LAN_CIDR|" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# webserver-port=.*/webserver-port=$PDNS_WS_PORT/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# webserver-address=.*/webserver-address=$PDNS_WS_ADDRESS/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s|# webserver-allow-from=.*|webserver-allow-from=$PDNS_WS_ALLOW_FROM|" "/etc/powerdns/pdns.conf"
 ```
 
 ### Configuring PowerDNS (Recursor) 
@@ -145,11 +153,13 @@ You can add zones in the following format:
 
 ```bash
 cat << EOF | sudo tee /etc/powerdns/recursor.conf
-local-port=$recursor_port
+local-port=$RECURSOR_PORT
+local-address=$RECURSOR_ADDRRESS
+allow-from=$RECURSOR_ALLOW_FROM
 # First Forward Zone
-forward-zones=$ZONE=$local_address:$pdns_port
+forward-zones=$ZONE=$PDNS_ADDRESS:$PDNS_PORT
 # N Forward Zone
-forward-zones+=$ZONE=$local_address:$pdns_port
+forward-zones+=$ZONE=$PDNS_ADDRESS:$PDNS_PORT
 EOF
 ```
 
@@ -160,14 +170,14 @@ This basically redirects your Recursor requests to the Authoritative Server. Itâ
 ```bash
 cat << EOF | sudo tee /etc/dnsdist/dnsdist.conf
 ---- Listen addresses
-addLocal('0.0.0.0:$dnsdist_port')
+addLocal('$DNSDIST_ADDRESS:$DNSDIST_PORT')
 ---- Back-end server
-newServer({address="$DNS_SERVER1_IP:$pdns_port", pool="int"})
-newServer({address="$DNS_SERVER2_IP:$pdns_port", pool="int"})
-newServer({address="$DNS_SERVER3_IP:$pdns_port", pool="int"})
+newServer({address="$DNS_SERVER1_IP:$RECURSOR_PORT", pool="int"})
+newServer({address="$DNS_SERVER2_IP:$RECURSOR_PORT", pool="int"})
+newServer({address="$DNS_SERVER3_IP:$RECURSOR_PORT", pool="int"})
 ---- Policy
 setServerPolicy(whashed)
-setACL({'0.0.0.0/0', '::/0'}) -- Allow all IPs access
+setACL({'$DNSDIST_ALLOW_FROM') -- Allow all IPs access
 ---- Rules
 addAction({"$ZONE."}, PoolAction("int"))
 EOF

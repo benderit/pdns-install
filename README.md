@@ -30,7 +30,6 @@ export DNS_SERVER3_IP=192.168.22.55
 export PG_SERVER_IP=192.168.22.57
 ```
 
-## Inventory
 ```bash
 read -p "Input 1-st DNS server IP address: " DNS_SERVER1_IP
 read -p "Input 2-nd DNS server IP address: " DNS_SERVER2_IP
@@ -42,23 +41,23 @@ export DNS_SERVER3_IP=$DNS_SERVER3_IP
 export PG_SERVER_IP=$PG_SERVER_IP
 ```
 
-
+### Prepare environment
 ```bash
 # Create a Working Directory for the installation
-sudo mkdir -p /opt/pdns_install
 export workpath="/opt/pdns_install"
+sudo mkdir -p "$workpath"
+cd "$workpath"
 ```
 
 ```bash
-echo "pdns_db=$pdns_db" | sudo tee "$workpath/db_credentials"
-echo "pdns_db_user=$pdns_db_user" | sudo tee -a "$workpath/db_credentials"
-echo "pdns_pwd=$pdns_pwd" | sudo tee -a "$workpath/db_credentials"
-echo "pdnsadmin_salt=$pdnsadmin_salt" | sudo tee -a "$workpath/db_credentials"
-echo "pdns_apikey=$pdns_apikey" | sudo tee -a "$workpath/db_credentials"
-echo "workpath=$workpath" | sudo tee -a "$workpath/db_credentials"
-sudo chown root:root "$workpath/db_credentials"
-sudo chmod 640 "$workpath/db_credentials"
-cd "$workpath"
+echo "pdns_db=$pdns_db" | sudo tee "db_credentials"
+echo "pdns_db_user=$pdns_db_user" | sudo tee -a "db_credentials"
+echo "pdns_pwd=$pdns_pwd" | sudo tee -a "db_credentials"
+echo "pdnsadmin_salt=$pdnsadmin_salt" | sudo tee -a "db_credentials"
+echo "pdns_apikey=$pdns_apikey" | sudo tee -a "db_credentials"
+echo "workpath=$workpath" | sudo tee -a "db_credentials"
+sudo chown root:root "db_credentials"
+sudo chmod 640 "db_credentials"
 ```
 
 ### Installing PowerDNS/DNSDist 

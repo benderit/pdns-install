@@ -20,6 +20,9 @@ export recursor_port_5353
 
 # Power DNS local port
 export pdns_port=5300
+
+# PG port
+PG_SERVER_PORT="5432"
 ```
 
 ## Inventory
@@ -85,10 +88,10 @@ sudo systemctl stop systemd-resolved
 
 You’ll want to set up an external DNS for resolution in the resolv.conf file if you do not set up a Recursor DNS.
 
-### Populating the Database 
-
+### Populating the Database
 Once the PowerDNS Server has been installed you’ll need to populate it’s database with the provided Schema from it’s backend.
 
+### Configuring PowerDNS (db connection) 
 ```bash
 export db_config_path="/etc/powerdns/pdns.d"
 
@@ -102,7 +105,7 @@ sudo cp /usr/share/doc/pdns-backend-$db_type/examples/g$db_type.conf /etc/powerd
 sudo sed -i "s/gpgsql-dnssec=yes/gpgsql-dnssec=no/" "$db_config_file"
 sudo sed -i "s/\(^g$db_type-dbname=\).*/\1$pdns_db/" "$db_config_file"
 sudo sed -i "s/\(^g$db_type-host=\).*/\1$PG_SERVER_IP/" "$db_config_file"
-sudo sed -i "s/\(^g$db_type-port=\).*/\15432/" "$db_config_file"
+sudo sed -i "s/\(^g$db_type-port=\).*/\1$PG_SERVER_PORT/" "$db_config_file"
 sudo sed -i "s/\(^g$db_type-user=\).*/\1$pdns_db_user/" "$db_config_file"
 sudo sed -i "s/\(^g$db_type-password=\).*/\1$pdns_pwd/" "$db_config_file"
 sudo chmod 640 "$db_config_file"
@@ -259,13 +262,10 @@ sudo sed -i "s/\(^SQLA_DB_USER = \).*/\1\'$pdns_db_user\'/" $prod_config
 # If you're using PostgreSQL add the following statements to the configuration file and install psycopg2
 sudo sed -i "s/#import urllib.parse/import urllib.parse/g" $prod_config
 
-# Insert PORT after SQLA_DB_USER
-db_port="5432"
-
 if ! [[ $(grep "SQLA_DB_PORT" $prod_config) ]]; then
-    sudo sed -i "/^SQLA_DB_USER.*/a SQLA_DB_PORT = $db_port" $prod_config
+    sudo sed -i "/^SQLA_DB_USER.*/a SQLA_DB_PORT = $PG_SERVER_PORT" $prod_config
 else
-    sudo sed -i "s/\(^SQLA_DB_PORT = \).*/\1$db_port/" $prod_config
+    sudo sed -i "s/\(^SQLA_DB_PORT = \).*/\1$PG_SERVER_PORT/" $prod_config
 fi
 
 # Insert DB URI
@@ -302,7 +302,6 @@ deactivate
 
 Copy the following files onto your NGINX Directory or create them with the following text blocks.
 
-**/etc/systemd/system/pdnsadmin.service**
 ```bash
 cat << EOF | sudo tee /etc/systemd/system/pdnsadmin.service
 [Unit]
@@ -326,7 +325,6 @@ WantedBy=multi-user.target
 EOF
 ```
 
-**/etc/systemd/system/pdnsadmin.socket**
 ```bash
 cat << EOF | sudo tee /etc/systemd/system/pdnsadmin.socket
 [Unit]
@@ -345,7 +343,6 @@ EOF
 sudo rm /etc/nginx/sites-enabled/default
 ```
 
-**/etc/nginx/sites-enabled/powerdns-admin.conf**
 ```bash
 cat << EOF | sudo tee /etc/nginx/sites-enabled/powerdns-admin.conf 
 server {
@@ -414,7 +411,6 @@ sudo systemctl enable --now pdnsadmin.service pdnsadmin.socket
 Your database installation credentials are saved at **/opt/pdns_install/db_credentials**
 
 To check the PowerDNS Admin status you can do:
-
 ```
 sudo systemctl status pdnsadmin.service pdnsadmin.socket
 ```

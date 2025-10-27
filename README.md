@@ -63,11 +63,14 @@ sudo chown root:root "db_credentials"
 sudo chmod 640 "db_credentials"
 ```
 
-### Installing PowerDNS/DNSDist 
+### Installing PowerDNS/DNSDist and PSQL
 
 ```bash
 # Update the package lists:
 sudo apt-get update
+
+# Postgresql-client
+sudo apt-get install -y postgresql-client
 
 # PowerDNS Authoritative Server
 sudo apt-get install pdns-server pdns-backend-pgsql -y && \
@@ -90,6 +93,11 @@ You’ll want to set up an external DNS for resolution in the resolv.conf file i
 
 ### Populating the Database
 Once the PowerDNS Server has been installed you’ll need to populate it’s database with the provided Schema from it’s backend.
+
+```bash
+export PGPASSWORD="$pdns_pwd"
+psql -U $pdns_db_user -h $PG_SERVER_IP -d $pdns_db < "/usr/share/pdns-backend-$db_type/schema/schema.$db_type.sql"
+```
 
 ### Configuring PowerDNS (db connection) 
 ```bash

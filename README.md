@@ -1,6 +1,3 @@
-# powerdns-installation
-Powerdns installation guide on debial 11
-
 # PowerDNS Installation
 
 ## Variables

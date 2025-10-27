@@ -16,7 +16,7 @@ export local_address="127.0.0.1"
 export dnsdist_port=53
 
 # Recursor Port
-export recursor_port_5353
+export recursor_port=5353
 
 # Power DNS local port
 export pdns_port=5300
@@ -144,7 +144,8 @@ To do that edit the file `/etc/powerdns/recursor.conf`.
 You can add zones in the following format:
 
 ```bash
-cat << EOF | sudo tee /etc/powerdns/recursor.conf 
+cat << EOF | sudo tee /etc/powerdns/recursor.conf
+local-port=$recursor_port
 # First Forward Zone
 forward-zones=$ZONE=$local_address:$pdns_port
 # N Forward Zone

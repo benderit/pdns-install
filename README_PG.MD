@@ -2,12 +2,6 @@
 
 ## Postgresql (PGSQL) 
 ```bash
-# Add PostgreSQL Public Key
-wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor --output /etc/apt/trusted.gpg.d/postgresql.gpg
-
-# Add PostgreSQL Repository
-echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-
 # Update the package lists:
 sudo apt-get update && sudo apt-get upgrade
 

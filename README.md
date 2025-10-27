@@ -110,8 +110,18 @@ sudo chown root:pdns "$db_config_file"
 ```
 
 ### Configuring PowerDNS (Authoritative) 
+```bash
+# Set the API Key to your generated key and API Parameter to "Yes"
+sudo sed -i "s/# api=.*/api=yes/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# api-key=.*/api-key=$pdns_apikey/" "/etc/powerdns/pdns.conf"
 
-Before starting up the service you’ll need to set-up some basic parameters:
+sudo sed -i "s/# local-address=.*/local-address=$local_address/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# local-port=.*/local-port=$pdns_port/" "/etc/powerdns/pdns.conf"
+
+# Webserver/API access is only allowed from these subnets
+sudo sed -i "s/# webserver=.*/webserver=yes/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s/# webserver-port=.*/webserver-port=8081/" "/etc/powerdns/pdns.conf"
+sudo sed -i "s|# webserver-allow-from=.*|webserver-allow-from=$local_address,$LAN_CIDR|" "/etc/powerdns/pdns.conf"
 
 ### Configuring PowerDNS (Recursor) 
 
@@ -132,26 +142,26 @@ EOF
 
 This basically redirects your Recursor requests to the Authoritative Server. It’s recommended to only allow Recursive Queries to your LAN and only expose your Authoritative DNS to external queries.
 
-### Setting up the API Key 
+### Configuring DNSDist 
 
-Next up you’ll need to set up your API Key for the Flask Front-end to be able to communicate with your PDNS Back-end.
+```bash
+cat << EOF | sudo tee /etc/dnsdist/dnsdist.conf
+---- Listen addresses
+addLocal('0.0.0.0:$dnsdist_port')
+---- Back-end server
+newServer({address="$DNS_SERVER1_IP:$pdns_port", pool="int"})
+newServer({address="$DNS_SERVER2_IP:$pdns_port", pool="int"})
+newServer({address="$DNS_SERVER3_IP:$pdns_port", pool="int"})
+---- Policy
+setServerPolicy(whashed)
+setACL({'0.0.0.0/0', '::/0'}) -- Allow all IPs access
+---- Rules
+addAction({"$ZONE."}, PoolAction("int"))
+EOF
+```
 
-```bash 
-export LAN_CIDR=192.168.22.0/24
-
-# Set the API Key to your generated key and API Parameter to "Yes"
-sudo sed -i "s/# api=.*/api=yes/" "/etc/powerdns/pdns.conf"
-sudo sed -i "s/# api-key=.*/api-key=$pdns_apikey/" "/etc/powerdns/pdns.conf"
-
-sudo sed -i "s/# local-address=.*/local-address=$local_address/" "/etc/powerdns/pdns.conf"
-sudo sed -i "s/# local-port=.*/local-port=$pdns_port/" "/etc/powerdns/pdns.conf"
-
-# Webserver/API access is only allowed from these subnets
-sudo sed -i "s/# webserver=.*/webserver=yes/" "/etc/powerdns/pdns.conf"
-sudo sed -i "s/# webserver-port=.*/webserver-port=8081/" "/etc/powerdns/pdns.conf"
-sudo sed -i "s|# webserver-allow-from=.*|webserver-allow-from=$local_address,$LAN_CIDR|" "/etc/powerdns/pdns.conf"
-
-# Start the services
+## Start the services
+```bash
 sudo systemctl start pdns
 sudo systemctl start pdns-recursor
 sudo systemctl start dnsdist
@@ -410,28 +420,3 @@ sudo systemctl status pdnsadmin.service pdnsadmin.socket
 ```
 
 * Default API URL: http://localhost:8081
-
-### Configuring DNSDist 
-
-Now if you want you can uise DNSDist to split traffic between your local DNS and web requests. Do this by adding the follwoing to
-
-**/etc/dnsdist/dnsdist.conf**
-
-```conf
-cat << EOF | sudo tee /etc/dnsdist/dnsdist.conf
----- Listen addresses
-addLocal('0.0.0.0:$dnsdist_port')
----- Back-end server
-newServer({address="$DNS_SERVER1_IP:$pdns_port", pool="int"})
-newServer({address="$DNS_SERVER2_IP:$pdns_port", pool="int"})
-newServer({address="$DNS_SERVER3_IP:$pdns_port", pool="int"})
----- Policy
-setServerPolicy(whashed)
-setACL({'0.0.0.0/0', '::/0'}) -- Allow all IPs access
----- Rules
-addAction({"$ZONE."}, PoolAction("int"))
-EOF
-```
-
-This will essentially filter out your LAN Hosts from External Queries
-You’ll need to change your Auth and Recursor Server ports to match this configuration file (Auth → 5300 / Rec → 5301)

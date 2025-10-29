@@ -9,7 +9,7 @@ su
 ### Install prerequisite packages 
 ```bash
 apt-get update && \
-apt-get install software-properties-common gnupg2 lsb-release sudo curl -y
+apt-get install software-properties-common gnupg2 lsb-release sudo curl dnsutils -y
 ```
 
 ### Set-up sudo for user
